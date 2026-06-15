@@ -49,8 +49,6 @@ localparam CONF_STR = {
 	"-;",
 	"O[14:13],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"O[5:3],Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
-	"O[6],Debug pattern,Off,On;",
-	"O[7],SDRAM dump (BA3),Off,On;",
 	"-;",
 	"DIP;",
 	"-;",
@@ -293,47 +291,12 @@ jtcninja_game_sdram u_game
 	.sample     ( sample   )
 );
 
-//////////////////////////////   SDRAM DUMP (debug)   /////////////////////////
-// OSD "SDRAM dump" (status[7]): paint BA3's raw bytes to the screen as grayscale
-// to verify the gfx ROM actually landed in SDRAM. The game keeps running so its
-// video timing/raster stays alive, but this engine steals the SDRAM read bus and
-// walks BA3 from address 0 (= char ROM). Structured graphics on screen => the ROM
-// is really in SDRAM (the bug is downstream); noise/flat => the download wrote
-// garbage and every clock/burst experiment was beside the point.
-wire dbg_sdram = status[7];
-
-reg  [8:0] dmp_h, dmp_v;
-reg        dmp_hsd;
-always @(posedge clk48) begin
-	dmp_hsd <= HS;
-	if (pxl_cen)       dmp_h <= LHBL ? dmp_h + 9'd1 : 9'd0;
-	if (HS & ~dmp_hsd) dmp_v <= LVBL ? dmp_v + 9'd1 : 9'd0;
-end
-
-// 128 words (256 bytes) per scanline, base 0 = start of BA3. Two pixels per word.
-wire [21:0] dmp_waddr = ({14'd0, dmp_v[7:0]} << 7) + {15'd0, dmp_h[7:1]};
-reg  [21:0] dmp_addr;
-reg         dmp_rd, dmp_pend;
-reg  [15:0] dmp_word;
-always @(posedge clk48) begin
-	if (pxl_cen && dmp_h[0]==1'b0) begin   // one read per word, on the even pixel
-		dmp_addr <= dmp_waddr;
-		dmp_rd   <= 1'b1;
-		dmp_pend <= 1'b1;
-	end
-	if (dmp_rd   && ba_ack[3]) dmp_rd   <= 1'b0;
-	if (dmp_pend && ba_rdy[3]) begin dmp_word <= data_read; dmp_pend <= 1'b0; end
-end
-wire [7:0]  dmp_byte = dmp_h[0] ? dmp_word[7:0] : dmp_word[15:8];
-wire [23:0] dmp_rgb  = {dmp_byte, dmp_byte, dmp_byte};
-
-// Debug mux on the board-facing SDRAM bus (game runs but its reads are dropped).
-assign ba0_addr = dbg_sdram ? 22'd0           : g_ba0_addr;
-assign ba1_addr = dbg_sdram ? 22'd0           : g_ba1_addr;
-assign ba2_addr = dbg_sdram ? 22'd0           : g_ba2_addr;
-assign ba3_addr = dbg_sdram ? dmp_addr        : g_ba3_addr;
-assign ba_rd    = dbg_sdram ? {dmp_rd, 3'b000}: g_ba_rd;
-assign ba_wr    = dbg_sdram ? 4'd0            : g_ba_wr;
+assign ba0_addr = g_ba0_addr;
+assign ba1_addr = g_ba1_addr;
+assign ba2_addr = g_ba2_addr;
+assign ba3_addr = g_ba3_addr;
+assign ba_rd    = g_ba_rd;
+assign ba_wr    = g_ba_wr;
 
 //////////////////////////////   SDRAM   /////////////////////////////////////
 jtframe_board_sdram #(.SDRAMW(22), .MISTER(1)) u_sdram
@@ -392,17 +355,7 @@ jtframe_board_sdram #(.SDRAMW(22), .MISTER(1)) u_sdram
 );
 
 //////////////////////////////   VIDEO   /////////////////////////////////////
-// Debug test pattern (OSD "Debug pattern"): a position gradient independent of
-// the game + SDRAM, for isolating video-path vs game/SDRAM faults.
-reg  [8:0] tp_h, tp_v;
-reg        hs_d;
-always @(posedge clk48) begin
-	hs_d <= HS;
-	if (pxl_cen)      tp_h <= LHBL ? tp_h + 9'd1 : 9'd0;
-	if (HS & ~hs_d)   tp_v <= LVBL ? tp_v + 9'd1 : 9'd0;
-end
-wire [23:0] testpat  = { tp_h[7:0], tp_v[7:0], tp_h[7:0] ^ tp_v[7:0] };
-wire [23:0] game_rgb = dbg_sdram ? dmp_rgb : (status[6] ? testpat : { red, green, blue });
+wire [23:0] game_rgb = { red, green, blue };
 
 // jtframe LHBL/LVBL are active-low; arcade_video wants active-high HBlank/VBlank.
 arcade_video #(.WIDTH(256), .DW(24)) u_arcade_video
