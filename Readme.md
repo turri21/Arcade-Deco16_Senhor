@@ -1,4 +1,4 @@
-# Arcade core for Deco16 games (Caan Ninja and Crude Buster for now)
+# Arcade core for Deco16 games (Caveman Ninja and Crude Buster for now)
 
 ## General description
 This repo contains an HDL  wrapper for the Caveman Ninja and Crude Buster games.
