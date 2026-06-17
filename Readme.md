@@ -1,9 +1,9 @@
-# Arcade core for Deco16 games (Caveman Ninja and Crude Buster for now)
+# Arcade core for DECO16 games (Caveman Ninja and Crude Buster for now)
 
 ## General description
 This repo contains an HDL  wrapper for the Caveman Ninja and Crude Buster games.
-The HDL loosely represent the Deco16 board, since some chips aren't decapped, they have been made with mame informations.
-PLDs of this board exists but weren't used and the respective pld functions are absorbed in the HDL.
+The HDL loosely represent the DECO16 board, since some chips haven't been decapped, they have been made with MAME information.
+PLDs of this board exists but weren't used and the respective PLD functions are absorbed in the HDL.
 It was built with AI through JTFRAME and then converted to MiSTer template with the intent of making Caveman Ninja and Crude Buster playable on the MiSTer.
 It is not a preservation effort since it does not add anything on top of what MAME already delivers, for now with extra bugs.
 
